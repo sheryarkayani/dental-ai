@@ -4,21 +4,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Clock, DollarSign, Plus } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase"
+import { Database } from "@/lib/database.types"
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const timeSlots = Array.from({ length: 13 }, (_, i) => `${i + 8}:00`)
 
-const weekAppointments = [
-  { id: 1, day: 1, time: "9:00", patient: "Sarah Johnson", procedure: "Teeth Whitening", duration: 1, color: "bg-yellow-200 border-yellow-400" },
-  { id: 2, day: 1, time: "10:30", patient: "Michael Chen", procedure: "Checkup", duration: 0.5, color: "bg-green-200 border-green-400" },
-  { id: 3, day: 1, time: "14:00", patient: "James Wilson", procedure: "Root Canal", duration: 1.5, color: "bg-red-200 border-red-400" },
-  { id: 4, day: 2, time: "9:00", patient: "Emily Davis", procedure: "Invisalign Consult", duration: 1, color: "bg-teal-200 border-teal-400" },
-  { id: 5, day: 2, time: "11:00", patient: "Robert Taylor", procedure: "Implant Consult", duration: 1, color: "bg-blue-200 border-blue-400" },
-  { id: 6, day: 3, time: "10:00", patient: "Alice Brown", procedure: "Cleaning", duration: 1, color: "bg-green-200 border-green-400" },
-  { id: 7, day: 4, time: "13:00", patient: "David Miller", procedure: "Crown Fitting", duration: 1, color: "bg-purple-200 border-purple-400" },
-]
+type Appointment = Database['public']['Tables']['appointments']['Row'] & {
+  day?: number
+  color?: string
+}
 
 export default function AppointmentsPage() {
+  const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([])
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      const { data } = await supabase.from('appointments').select('*')
+      if (data) {
+        // Map to add visualization props that aren't in DB yet
+        const mapped = data.map((apt, index) => ({
+          ...apt,
+          day: (index % 5) + 1, // Distribute across Mon-Fri
+          color: ["bg-yellow-200 border-yellow-400", "bg-green-200 border-green-400", "bg-red-200 border-red-400", "bg-blue-200 border-blue-400"][index % 4],
+          // Normalize time format if needed
+          time: apt.time?.split(' ')[0] || "9:00"
+        }))
+        setWeekAppointments(mapped)
+      }
+    }
+    fetchAppointments()
+  }, [])
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

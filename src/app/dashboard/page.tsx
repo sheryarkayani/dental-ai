@@ -6,9 +6,38 @@ import { ArrowUpRight, ArrowDownRight, TrendingUp, Phone, Calendar, DollarSign, 
 import Link from "next/link"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Badge } from "@/components/ui/badge"
-import { appointments, leads, campaigns, stats, performanceData } from "@/lib/dummy-data"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase"
+import { Database } from "@/lib/database.types"
+
+// Keep stats and performanceData as fallback/mock for now as they are aggregated
+import { stats as initialStats, performanceData as initialPerformanceData } from "@/lib/dummy-data"
+
+type Appointment = Database['public']['Tables']['appointments']['Row']
+type Lead = Database['public']['Tables']['leads']['Row']
+type Campaign = Database['public']['Tables']['campaigns']['Row']
 
 export default function DashboardPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [stats, setStats] = useState(initialStats)
+  const [performanceData, setPerformanceData] = useState(initialPerformanceData)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: apts } = await supabase.from('appointments').select('*').order('created_at', { ascending: false }).limit(5)
+      if (apts) setAppointments(apts)
+
+      const { data: lds } = await supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(5)
+      if (lds) setLeads(lds)
+
+      const { data: cmps } = await supabase.from('campaigns').select('*')
+      if (cmps) setCampaigns(cmps)
+    }
+    fetchData()
+  }, [])
   return (
     <div className="space-y-6">
       <div>

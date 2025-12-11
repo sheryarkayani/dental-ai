@@ -4,19 +4,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Phone, Mail, Clock } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase"
+import { Database } from "@/lib/database.types"
 
-const allLeads = [
-  { id: 1, name: "Alice Brown", phone: "***-***-1234", service: "Implants", source: "Summer 2024", time: "5 min ago", status: "New", attempts: 0 },
-  { id: 2, name: "David Miller", phone: "***-***-5678", service: "Invisalign", source: "Invisalign Special", time: "15 min ago", status: "Calling", attempts: 1 },
-  { id: 3, name: "Jessica White", phone: "***-***-9012", service: "Emergency", source: "Emergency Care", time: "1 hour ago", status: "Contacted", attempts: 2 },
-  { id: 4, name: "Thomas Anderson", phone: "***-***-3456", service: "Whitening", source: "Whitening Promo", time: "2 hours ago", status: "Booked", attempts: 1 },
-  { id: 5, name: "Jennifer Martin", phone: "***-***-7890", service: "Checkup", source: "Family Dental", time: "3 hours ago", status: "New", attempts: 0 },
-  { id: 6, name: "Christopher Lee", phone: "***-***-2345", service: "Implants", source: "Summer 2024", time: "4 hours ago", status: "Calling", attempts: 2 },
-  { id: 7, name: "Amanda Garcia", phone: "***-***-6789", service: "Cosmetic", source: "Cosmetic Dentistry", time: "5 hours ago", status: "No Answer", attempts: 3 },
-  { id: 8, name: "Daniel Rodriguez", phone: "***-***-0123", service: "Invisalign", source: "Invisalign Special", time: "6 hours ago", status: "Contacted", attempts: 1 },
-]
+type Lead = Database['public']['Tables']['leads']['Row']
 
 export default function LeadsPage() {
+  const [allLeads, setAllLeads] = useState<Lead[]>([])
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      const { data } = await supabase.from('leads').select('*')
+      if (data) setAllLeads(data)
+    }
+    fetchLeads()
+  }, [])
+
   const statusColumns = {
     "New": allLeads.filter(l => l.status === "New"),
     "Calling": allLeads.filter(l => l.status === "Calling"),

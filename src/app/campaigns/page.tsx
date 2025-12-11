@@ -7,19 +7,37 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Search, Filter } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase"
+import { Database } from "@/lib/database.types"
 
-const allCampaigns = [
-  { id: 1, name: "Austin Dental Implants - Summer 2024", status: "Active", service: "Implants", leads: 145, appointments: 52, cpa: "$24", spend: "$1,250", created: "Aug 1, 2024" },
-  { id: 2, name: "Invisalign Special Offer", status: "Active", service: "Invisalign", leads: 89, appointments: 31, cpa: "$27", spend: "$850", created: "Sep 15, 2024" },
-  { id: 3, name: "Emergency Dental Care", status: "Paused", service: "Emergency", leads: 67, appointments: 28, cpa: "$15", spend: "$420", created: "Jul 10, 2024" },
-  { id: 4, name: "Teeth Whitening Promo", status: "Active", service: "Whitening", leads: 203, appointments: 78, cpa: "$18", spend: "$1,404", created: "Oct 1, 2024" },
-  { id: 5, name: "Family Dental Checkups", status: "Completed", service: "Checkup", leads: 312, appointments: 124, cpa: "$12", spend: "$1,488", created: "Jun 1, 2024" },
-  { id: 6, name: "Cosmetic Dentistry Austin", status: "Active", service: "Cosmetic", leads: 56, appointments: 19, cpa: "$32", spend: "$608", created: "Nov 1, 2024" },
-  { id: 7, name: "Senior Dental Care", status: "Paused", service: "General", leads: 41, appointments: 15, cpa: "$22", spend: "$330", created: "Aug 20, 2024" },
-  { id: 8, name: "Back to School Checkups", status: "Completed", service: "Checkup", leads: 178, appointments: 89, cpa: "$14", spend: "$1,246", created: "Aug 1, 2024" },
-]
+type Campaign = Database['public']['Tables']['campaigns']['Row'] & {
+  cpa?: string
+  created?: string
+}
 
 export default function CampaignsPage() {
+  const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([])
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      const { data } = await supabase.from('campaigns').select('*')
+      if (data) {
+        const mapped = data.map(c => {
+          const spendVal = parseFloat(c.spend?.replace(/[^0-9.]/g, '') || '0')
+          const cpaVal = c.appointments && c.appointments > 0 ? (spendVal / c.appointments).toFixed(0) : '0'
+          return {
+            ...c,
+            cpa: `$${cpaVal}`,
+            created: c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+          }
+        })
+        setAllCampaigns(mapped)
+      }
+    }
+    fetchCampaigns()
+  }, [])
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

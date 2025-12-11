@@ -11,13 +11,55 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase"
 
 export default function NewCampaignPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleFinish = () => {
-    router.push("/campaigns")
+  // Form State
+  const [formData, setFormData] = useState({
+    name: "",
+    goal: "",
+    service: "General",
+    dailyBudget: "50",
+    audience: "Adults 25-55, 15 mile radius",
+  })
+
+  const updateForm = (key: string, value: string) => {
+    setFormData(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleFinish = async () => {
+    setIsSubmitting(true)
+    const supabase = createClient()
+
+    // Determine service based on goal or default
+    let service = formData.service
+    if (formData.goal.toLowerCase().includes('implant')) service = 'Implants'
+    else if (formData.goal.toLowerCase().includes('invisalign')) service = 'Invisalign'
+    else if (formData.goal.toLowerCase().includes('whitening')) service = 'Whitening'
+
+    // Create unique name if empty
+    const campaignName = formData.name || `${service} Campaign - ${new Date().toLocaleDateString()}`
+
+    const { error } = await supabase.from('campaigns').insert({
+      name: campaignName,
+      service: service,
+      status: 'Active',
+      spend: `$${formData.dailyBudget}/day`,
+      leads: 0,
+      appointments: 0
+    })
+
+    if (error) {
+      console.error('Error creating campaign:', error)
+      alert("Failed to create campaign")
+    } else {
+      router.push("/campaigns")
+    }
+    setIsSubmitting(false)
   }
 
   return (
@@ -57,15 +99,30 @@ export default function NewCampaignPage() {
           {step === 1 && (
             <div className="space-y-4">
               <div className="space-y-2">
+                <Label>Campaign Name</Label>
+                <Input
+                  placeholder="e.g. Summer Implant Special"
+                  value={formData.name}
+                  onChange={(e) => updateForm('name', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>What's your campaign goal?</Label>
-                <Textarea 
+                <Textarea
                   placeholder="E.g., I want more dental implant patients in Austin..."
                   className="min-h-[100px]"
+                  value={formData.goal}
+                  onChange={(e) => updateForm('goal', e.target.value)}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {["Get more implant patients", "Promote Invisalign", "Fill emergency slots", "Increase cleanings"].map((goal) => (
-                  <Button key={goal} variant="outline" className="h-auto py-4">
+                  <Button
+                    key={goal}
+                    variant={formData.goal === goal ? "default" : "outline"}
+                    className="h-auto py-4"
+                    onClick={() => updateForm('goal', goal)}
+                  >
                     {goal}
                   </Button>
                 ))}
@@ -77,25 +134,11 @@ export default function NewCampaignPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Location</Label>
-                <Input placeholder="Austin, TX" />
+                <Input placeholder="Austin, TX" defaultValue="Austin, TX" />
               </div>
               <div className="space-y-2">
                 <Label>Radius (miles)</Label>
                 <Input type="number" defaultValue="15" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Age Range</Label>
-                  <div className="flex items-center space-x-2">
-                    <Input type="number" defaultValue="25" />
-                    <span>-</span>
-                    <Input type="number" defaultValue="55" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Gender</Label>
-                  <Input defaultValue="All" />
-                </div>
               </div>
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-900">
@@ -117,7 +160,6 @@ export default function NewCampaignPage() {
                     </div>
                     <h4 className="font-medium">Transform Your Smile Today!</h4>
                     <p className="text-sm text-slate-600">Get professional dental implants from Austin's trusted experts...</p>
-                    <Button variant="outline" size="sm" className="w-full">Regenerate</Button>
                   </div>
                 ))}
               </div>
@@ -127,25 +169,18 @@ export default function NewCampaignPage() {
           {step === 4 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Daily Budget</Label>
-                <Input type="number" defaultValue="50" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <Input type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input type="date" />
-                </div>
+                <Label>Daily Budget ($)</Label>
+                <Input
+                  type="number"
+                  value={formData.dailyBudget}
+                  onChange={(e) => updateForm('dailyBudget', e.target.value)}
+                />
               </div>
               <div className="p-4 bg-slate-50 border rounded-md space-y-2">
                 <h4 className="font-medium">Estimated Results</h4>
                 <div className="space-y-1 text-sm">
-                  <p>Daily Reach: 2,500 - 3,500 people</p>
-                  <p>Estimated Leads/Week: 15 - 25</p>
-                  <p>Estimated Cost per Lead: $18 - $25</p>
+                  <p>Daily Reach: {parseInt(formData.dailyBudget) * 50} - {parseInt(formData.dailyBudget) * 70} people</p>
+                  <p>Estimated Leads/Week: {(parseInt(formData.dailyBudget) / 20).toFixed(0)} - {(parseInt(formData.dailyBudget) / 15).toFixed(0)}</p>
                 </div>
               </div>
             </div>
@@ -156,15 +191,11 @@ export default function NewCampaignPage() {
               <div className="space-y-3">
                 <div className="p-4 border rounded-md">
                   <h4 className="font-medium mb-2">Goal</h4>
-                  <p className="text-sm text-slate-600">Get more dental implant patients</p>
-                </div>
-                <div className="p-4 border rounded-md">
-                  <h4 className="font-medium mb-2">Audience</h4>
-                  <p className="text-sm text-slate-600">Adults 25-55, 15 mile radius, Austin TX</p>
+                  <p className="text-sm text-slate-600">{formData.goal || "Not specified"}</p>
                 </div>
                 <div className="p-4 border rounded-md">
                   <h4 className="font-medium mb-2">Budget</h4>
-                  <p className="text-sm text-slate-600">$50/day, 30 days</p>
+                  <p className="text-sm text-slate-600">${formData.dailyBudget}/day</p>
                 </div>
               </div>
             </div>
@@ -181,20 +212,19 @@ export default function NewCampaignPage() {
         ) : (
           <div />
         )}
-        
+
         {step < 5 ? (
           <Button onClick={() => setStep(step + 1)}>
             Continue
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
-          <Button onClick={handleFinish} className="bg-primary">
-            Launch Campaign
-            <Sparkles className="ml-2 h-4 w-4" />
+          <Button onClick={handleFinish} className="bg-primary" disabled={isSubmitting}>
+            {isSubmitting ? "Launching..." : "Launch Campaign"}
+            {!isSubmitting && <Sparkles className="ml-2 h-4 w-4" />}
           </Button>
         )}
       </div>
     </div>
   )
 }
-
